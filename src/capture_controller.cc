@@ -118,9 +118,9 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
     if ((!_use_counter && !_seen_frames.contains(time)) || (_use_counter && time != _last_time))
     {
         auto const [width, height] = _scene->layer->dimensions();
-        auto const frame = _use_counter ? _frame_index : time;
+        auto const frame_number = _use_counter ? _frame_index : time;
 
-        if (auto frame = _frame_capture.capture(self, frame, width, height, _current_dir))
+        if (auto frame = _frame_capture.capture(self, frame_number, width, height, _current_dir))
             _frame_saver->queue(std::move(*frame));
 
         if (_use_counter) 

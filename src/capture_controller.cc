@@ -81,6 +81,7 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
 
     if (GetAsyncKeyState(VK_F12) && _capture_state == capture_state::user_idle)
     {
+        _seen_frames.clear();
         _frame_index = 0;
         _last_time = -1;
 
@@ -91,6 +92,16 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
         std::filesystem::create_directories(_current_dir);
         spdlog::info("saving layer to '{}'", _current_dir.string());
     }
+
+    auto const del_down = (GetAsyncKeyState(VK_DELETE) & 0x8000) != 0;
+
+    if (del_down && !_del_held)
+    {
+        _use_counter = !_use_counter;
+        spdlog::info("switching save behavior to use {}", _use_counter ? "counter" : "afp time");
+    }
+
+    _del_held = del_down;
 
     if (_capture_state != capture_state::capture_queued || !_scene->layer || stride != 28)
         return _draw_hook.thiscall<HRESULT>(self, type, count, data, stride);
@@ -103,18 +114,30 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
     }
 
     auto const time = _scene->layer->time();
-    auto const [width, height] = _scene->layer->dimensions();
 
-    if (time != _last_time)
+    if ((!_use_counter && !_seen_frames.contains(time)) || (_use_counter && time != _last_time))
     {
-        if (auto frame = _frame_capture.capture(self, _frame_index, width, height, _current_dir))
+        auto const [width, height] = _scene->layer->dimensions();
+        auto const frame = _use_counter ? _frame_index : time;
+
+        if (auto frame = _frame_capture.capture(self, frame, width, height, _current_dir))
             _frame_saver->queue(std::move(*frame));
 
-        _frame_index++;
-        _last_time = time;
+        if (_use_counter) 
+        {
+            _frame_index++;
+            _last_time = time;
+        } 
+        else 
+        {
+            _seen_frames.insert(time);
+        }
     }
 
     _capture_state = capture_state::wait_next;
+
+    if (!_use_counter && time >= _scene->layer->duration()) 
+        _capture_state = capture_state::user_idle;
 
     return _draw_hook.thiscall<HRESULT>(self, type, count, data, stride);
 }

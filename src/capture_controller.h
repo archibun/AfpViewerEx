@@ -43,6 +43,7 @@ class capture_controller
         std::filesystem::path _current_dir {};
 
         std::int32_t _frame_index {};
+        std::int32_t _last_time { -1 };
         std::unique_ptr<async_frame_exporter> _frame_saver {};
 
         safetyhook::VmtHook _d3d9_vmt {};

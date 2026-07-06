@@ -1,7 +1,6 @@
 #pragma once
 
 #include <d3d9.h>
-#include <unordered_set>
 #include <safetyhook.hpp>
 
 #include "modules.h"
@@ -43,7 +42,7 @@ class capture_controller
         std::filesystem::path _root_dir {};
         std::filesystem::path _current_dir {};
 
-        std::unordered_set<std::int32_t> _seen_frames {};
+        std::int32_t _frame_index {};
         std::unique_ptr<async_frame_exporter> _frame_saver {};
 
         safetyhook::VmtHook _d3d9_vmt {};

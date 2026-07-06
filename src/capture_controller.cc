@@ -81,7 +81,7 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
 
     if (GetAsyncKeyState(VK_F12) && _capture_state == capture_state::user_idle)
     {
-        _seen_frames.clear();
+        _frame_index = 0;
 
         _current_layer = _scene->layer_name();
         _current_dir = _root_dir / _current_layer;
@@ -101,22 +101,13 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
         return _draw_hook.thiscall<HRESULT>(self, type, count, data, stride);
     }
 
-    auto const time = _scene->layer->time();
-    auto const duration = _scene->layer->duration();
+    auto const [width, height] = _scene->layer->dimensions();
 
-    if (!_seen_frames.contains(time))
-    {
-        auto const [width, height] = _scene->layer->dimensions();
+    if (auto frame = _frame_capture.capture(self, _frame_index, width, height, _current_dir))
+        _frame_saver->queue(std::move(*frame));
 
-        if (auto frame = _frame_capture.capture(self, time, width, height, _current_dir))
-            _frame_saver->queue(std::move(*frame));
-    }
-
-    _seen_frames.insert(time);
     _capture_state = capture_state::wait_next;
-
-    if (time >= duration)
-        _capture_state = capture_state::user_idle;
+    _frame_index++;
 
     return _draw_hook.thiscall<HRESULT>(self, type, count, data, stride);
 }

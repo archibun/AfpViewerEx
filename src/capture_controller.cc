@@ -79,29 +79,31 @@ auto capture_controller::on_primitive_draw(IDirect3DDevice9* self, D3DPRIMITIVET
     if (!_scene)
         return _draw_hook.thiscall<HRESULT>(self, type, count, data, stride);
 
-    if (GetAsyncKeyState(VK_F12) && _capture_state == capture_state::user_idle)
+    if (_capture_state == capture_state::user_idle)
     {
-        _seen_frames.clear();
-        _frame_index = 0;
-        _last_time = -1;
+        if (GetAsyncKeyState(VK_F12)) 
+        {
+            _seen_frames.clear();
+            _frame_index = 0;
+            _last_time = -1;
 
-        _current_layer = _scene->layer_name();
-        _current_dir = _root_dir / _current_layer;
-        _capture_state = capture_state::capture_queued;
+            _current_layer = _scene->layer_name();
+            _current_dir = _root_dir / _current_layer;
+            _capture_state = capture_state::capture_queued;
 
-        std::filesystem::create_directories(_current_dir);
-        spdlog::info("saving layer to '{}'", _current_dir.string());
+            std::filesystem::create_directories(_current_dir);
+            spdlog::info("saving layer to '{}'", _current_dir.string());
+        }
+
+        auto const del_down = (GetAsyncKeyState(VK_DELETE) & 0x8000) != 0;
+        if (del_down && !_del_held)
+        {
+            _use_counter = !_use_counter;
+            spdlog::info("switching save behavior to use {}", _use_counter ? "counter" : "afp time");
+        }
+
+        _del_held = del_down;
     }
-
-    auto const del_down = (GetAsyncKeyState(VK_DELETE) & 0x8000) != 0;
-
-    if (del_down && !_del_held)
-    {
-        _use_counter = !_use_counter;
-        spdlog::info("switching save behavior to use {}", _use_counter ? "counter" : "afp time");
-    }
-
-    _del_held = del_down;
 
     if (_capture_state != capture_state::capture_queued || !_scene->layer || stride != 28)
         return _draw_hook.thiscall<HRESULT>(self, type, count, data, stride);
